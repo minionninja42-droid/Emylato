@@ -1,0 +1,460 @@
+# Spark 40 Pro+ — custom Android launcher specification
+# File: spark40proplus-launcher.yml
+# This is a declarative project configuration/specification for a launcher app.
+# It is NOT an installable APK and Android will not execute this YAML by itself.
+# A Kotlin/Jetpack Compose Android project must read/implement this schema.
+
+schema_version: "1.0"
+project:
+  id: "spark40proplus-launcher"
+  name: "Aether Launcher"
+  display_name: "Aether"
+  package_name: "com.aether.launcher"
+  target_device:
+    manufacturer: "TECNO"
+    model: "SPARK 40 Pro+"
+    android_compatibility: "Android version on device; detect capabilities at runtime"
+    screen:
+      adaptive: true
+      edge_to_edge: true
+      respect_display_cutout: true
+      refresh_rate_aware: true
+  language: "ru-RU"
+  default_theme: "mono_forest"
+  design_goals:
+    - "Premium monochrome aesthetic inspired by the supplied reference video"
+    - "Blend iOS-like depth clock, TECNO visual language and Nothing-inspired minimalism"
+    - "Fast, fluid, battery-conscious and fully customizable"
+    - "All home-screen elements remain usable with one hand"
+
+design_system:
+  appearance:
+    default_mode: "dark"
+    modes: ["dark", "light", "system"]
+    corner_radius_dp: 22
+    spacing_unit_dp: 4
+    animation:
+      reduce_motion_respected: true
+      page_transition_ms: 260
+      spring_damping: 0.82
+      spring_stiffness: 420
+      haptics: true
+  colors:
+    dark:
+      background: "#08090B"
+      surface: "#15171B"
+      surface_elevated: "#202329"
+      text_primary: "#F5F5F5"
+      text_secondary: "#A7AAB1"
+      accent: "#D8DADF"
+      outline: "#383B42"
+      glass_tint: "#DDE3EE"
+    light:
+      background: "#F2F3F5"
+      surface: "#FFFFFF"
+      surface_elevated: "#E7E9ED"
+      text_primary: "#17191D"
+      text_secondary: "#666B74"
+      accent: "#343941"
+      outline: "#D5D8DE"
+      glass_tint: "#FFFFFF"
+  typography:
+    clock: "thin geometric sans"
+    headings: "clean sans"
+    body: "system sans"
+    support_dynamic_type: true
+  icon_style:
+    default: "monochrome rounded-square"
+    adaptive_icons: true
+    icon_size_dp: 54
+    label_size_sp: 11
+    allow_icon_packs: true
+    fallback: "monochrome_line"
+
+wallpapers:
+  sources:
+    - id: "built_in"
+      type: "bundled_gallery"
+      categories: ["forest", "abstract", "minimal", "anime-inspired", "nothing-style"]
+    - id: "device_gallery"
+      type: "system_photo_picker"
+  behavior:
+    separate_home_and_lock_wallpapers: true
+    allow_same_wallpaper: true
+    crop_modes: ["fill", "fit", "center_crop"]
+    parallax: true
+    blur_home_wallpaper: true
+    blur_strength_range: [0, 30]
+    dim_lock_wallpaper: true
+    color_extraction: true
+    apply_from_lock_screen: true
+    preview_before_apply: true
+    actions:
+      - "set_lock_screen"
+      - "set_home_screen"
+      - "set_both"
+
+lock_screen:
+  enabled: true
+  layout:
+    status_bar: "system"
+    date_position: "above_clock"
+    clock:
+      style: "depth_glass"
+      size_sp: 104
+      weight: "light"
+      alignment: "center"
+      glass:
+        enabled: true
+        blur_radius_dp: 24
+        opacity: 0.24
+        highlight: true
+        refraction_effect: "subtle"
+      depth_effect:
+        enabled: true
+        subject_segmentation: "best_effort"
+        allow_wallpaper_subject_to_overlap_clock: true
+        overlap_mask: "foreground_subject"
+        fallback: "glass_clock_without_occlusion"
+      alternate_styles:
+        - "tecno_digital"
+        - "nothing_dot_matrix"
+        - "minimal_analog"
+        - "stacked_ios"
+    widgets:
+      enabled: true
+      positions: ["top", "below_clock", "bottom"]
+      types: ["weather", "battery", "calendar", "steps", "custom_text"]
+    shortcuts:
+      bottom_left: "flashlight"
+      bottom_right: "camera"
+      customizable: true
+  interactions:
+    swipe_up: "unlock_or_system_authentication"
+    swipe_down: "notifications"
+    swipe_left: "camera"
+    long_press: "customize_lock_screen"
+    wallpaper_editor: "open_wallpaper_studio"
+  security:
+    use_android_keyguard: true
+    never_replace_system_pin_password_biometrics: true
+    do_not_store_unlock_credentials: true
+    show_sensitive_notifications: "respect_system_privacy_setting"
+    note: "Launcher overlays/customizes visuals only; secure unlocking remains Android System UI."
+
+home_screen:
+  grid:
+    columns: 4
+    rows: 6
+    allow_per_page_grid: true
+    adaptive_to_screen_size: true
+    icon_spacing_dp: 12
+  pages:
+    infinite_scroll: false
+    loop_pages: false
+    indicator: "minimal_pills"
+    pinch_to_overview: true
+    default_page: 0
+  dock:
+    enabled: true
+    icons: 4
+    translucent_glass: true
+    background_opacity: 0.18
+    labels: false
+    default_slots: ["phone", "browser", "messages", "camera"]
+    swipe_up_opens_app_drawer: true
+  gestures:
+    swipe_up: "app_drawer"
+    swipe_down: "notification_shade"
+    double_tap: "screen_off_if_permitted"
+    pinch: "home_screen_overview"
+    long_press_empty_space: "home_customization"
+    long_press_icon: "app_shortcuts_and_edit"
+    two_finger_swipe_down: "quick_settings_if_supported"
+  search:
+    enabled: true
+    placement: "app_drawer_top"
+    search_apps: true
+    search_contacts: false
+    search_web: "user_selectable_provider"
+
+app_drawer:
+  enabled: true
+  layout: "vertical_grid"
+  columns: 4
+  show_labels: true
+  alphabetical_index: true
+  search_bar: true
+  categories:
+    enabled: true
+    user_editable: true
+    defaults: ["Все", "Общение", "Медиа", "Инструменты", "Игры"]
+  sorting: ["alphabetical", "recent", "most_used", "custom"]
+  hide_apps: true
+  icon_pack_support: true
+
+folders:
+  enabled: true
+  open_style: "rounded_expanding_panel"
+  layouts: ["grid", "list"]
+  default_columns: 3
+  allow_rename: true
+  allow_custom_color: true
+  allow_custom_icon: true
+  allow_drag_apps_in_and_out: true
+  allow_reorder: true
+  close_on_outside_tap: true
+  suggestions: false
+
+widgets:
+  system_widgets:
+    enabled: true
+    use_android_app_widget_host: true
+  custom_widget_editor:
+    enabled: true
+    create_widget: true
+    edit_widget: true
+    duplicate_widget: true
+    delete_widget: true
+    resize:
+      enabled: true
+      min_size_cells: [1, 1]
+      max_size_cells: [4, 6]
+      resize_handles: ["all_edges", "corners"]
+    move:
+      enabled: true
+      drag_and_drop: true
+      free_position_mode: true
+      snap_to_grid_toggle: true
+      collision_behavior: "move_to_nearest_free_space"
+      keep_inside_safe_area: true
+    layering:
+      bring_forward: true
+      send_backward: true
+    widget_types:
+      - id: "clock"
+        name: "Часы"
+        sizes: ["2x1", "2x2", "4x2"]
+        styles: ["glass", "digital", "analog", "dot_matrix"]
+      - id: "weather"
+        name: "Погода"
+        sizes: ["2x2", "4x2"]
+      - id: "calendar"
+        name: "Календарь"
+        sizes: ["2x2", "4x2", "4x4"]
+      - id: "battery"
+        name: "Батарея"
+        sizes: ["1x1", "2x1"]
+      - id: "music"
+        name: "Музыка"
+        sizes: ["2x2", "4x2"]
+      - id: "photo_frame"
+        name: "Фоторамка"
+        sizes: ["2x2", "4x2", "4x4"]
+      - id: "system_info"
+        name: "Система"
+        sizes: ["2x2", "4x2"]
+      - id: "text"
+        name: "Текстовая заметка"
+        sizes: ["1x1", "2x2", "4x2"]
+  editing:
+    enter_by: ["long_press_widget", "home_edit_mode"]
+    show_resize_outline: true
+    preview_changes: true
+    save_automatically: true
+
+apps:
+  theme_store:
+    id: "aether_themes"
+    title: "Темы"
+    enabled: true
+    features:
+      - "theme_gallery"
+      - "wallpaper_gallery"
+      - "icon_packs"
+      - "font_presets"
+      - "widget_styles"
+      - "lock_screen_styles"
+      - "apply_theme_preview"
+      - "reset_to_default"
+    built_in_themes:
+      - "mono_forest"
+      - "nothing_dots"
+      - "tecno_glass"
+      - "midnight_oled"
+      - "soft_light"
+  settings:
+    id: "aether_settings"
+    title: "Настройки"
+    enabled: true
+    sections:
+      - "Главный экран"
+      - "Экран блокировки"
+      - "Виджеты"
+      - "Темы и обои"
+      - "Иконки и шрифты"
+      - "Жесты"
+      - "Папки и меню приложений"
+      - "Резервная копия"
+      - "О приложении"
+  wallpaper_studio:
+    id: "wallpaper_studio"
+    title: "Обои"
+    enabled: true
+    features: ["gallery", "crop", "blur", "parallax", "depth_preview", "apply_lock_home_both"]
+  widget_studio:
+    id: "widget_studio"
+    title: "Редактор виджетов"
+    enabled: true
+    features: ["create", "resize", "drag", "style", "transparency", "preview"]
+
+themes:
+  mono_forest:
+    name: "Mono Forest"
+    description: "Монохромные лесные обои, стеклянные часы и спокойные иконки"
+    mode: "dark"
+    wallpaper: "forest_monochrome"
+    icon_style: "monochrome_rounded"
+    widgets: "frosted_glass"
+    accent: "#D8DADF"
+  nothing_dots:
+    name: "Nothing"
+    description: "Точечная типографика и минималистичная сетка"
+    mode: "dark"
+    wallpaper: "abstract_dark"
+    icon_style: "dot_matrix"
+    widgets: "transparent"
+    accent: "#F0F0F0"
+  tecno_glass:
+    name: "TECNO Glass"
+    description: "Полупрозрачные панели и выразительные часы"
+    mode: "dark"
+    wallpaper: "abstract_glass"
+    icon_style: "rounded_glass"
+    widgets: "frosted_glass"
+    accent: "#C9D7E8"
+  midnight_oled:
+    name: "Midnight OLED"
+    description: "Почти чёрный интерфейс для OLED-экранов"
+    mode: "dark"
+    wallpaper: "black_minimal"
+    icon_style: "monochrome_line"
+    widgets: "minimal"
+    accent: "#FFFFFF"
+  soft_light:
+    name: "Soft Light"
+    description: "Светлая тема с мягкими тенями"
+    mode: "light"
+    wallpaper: "mist_minimal"
+    icon_style: "rounded_color"
+    widgets: "soft_cards"
+    accent: "#343941"
+
+extra_features:
+  - id: "smart_suggestions"
+    enabled: true
+    description: "Ненавязчивые предложения часто используемых приложений; можно отключить"
+  - id: "focus_mode"
+    enabled: true
+    description: "Скрывать выбранные приложения и лишние элементы на время фокуса"
+  - id: "one_hand_mode"
+    enabled: true
+    description: "Сдвиг интерактивных элементов вниз"
+  - id: "backup_restore"
+    enabled: true
+    description: "Экспорт и импорт раскладки, тем и настроек в локальный файл"
+  - id: "icon_badges"
+    enabled: true
+    description: "Счётчики уведомлений только при наличии разрешения"
+  - id: "ambient_clock"
+    enabled: true
+    description: "Минималистичные часы при выключенном экране только если поддерживается системой"
+
+permissions:
+  request_only_when_needed: true
+  optional:
+    - "POST_NOTIFICATIONS"
+    - "READ_CONTACTS"
+    - "ACCESS_COARSE_LOCATION"
+    - "ACCESS_FINE_LOCATION"
+  rules:
+    - "Use Android Photo Picker; do not request broad storage access for wallpapers."
+    - "Location is optional and only used for weather when the user enables it."
+    - "Contacts search is off by default."
+    - "Never collect passwords, PINs, biometric data or notification contents for analytics."
+    - "Do not request Accessibility Service or Device Admin for ordinary launcher features."
+    - "Explain every permission before requesting it."
+
+performance:
+  target:
+    smooth_scrolling: true
+    avoid_background_polling: true
+    low_memory_mode: true
+    battery_saver_respected: true
+    reduce_transparency_on_low_end_devices: true
+  caching:
+    wallpaper_thumbnails: true
+    icon_cache: true
+  animations:
+    disable_when_system_reduce_motion: true
+
+accessibility:
+  content_descriptions: true
+  screen_reader_support: true
+  minimum_touch_target_dp: 48
+  contrast_checks: true
+  scalable_text: true
+  do_not_rely_on_color_only: true
+
+implementation:
+  recommended_stack:
+    language: "Kotlin"
+    ui: "Jetpack Compose"
+    architecture: "MVVM"
+    persistence: "DataStore"
+    wallpaper_api: "Android WallpaperManager and Photo Picker"
+    widgets: "AppWidgetHost"
+    launcher_role: "ROLE_HOME"
+  android_components:
+    - "HomeActivity"
+    - "AppDrawer"
+    - "LockScreenCustomizer"
+    - "WallpaperStudio"
+    - "ThemeStore"
+    - "WidgetStudio"
+    - "LauncherSettings"
+  platform_constraints:
+    - "Set the app as the default Home app to replace the home screen."
+    - "A third-party launcher cannot fully replace the secure Android lock screen on modern Android."
+    - "Lock-screen appearance and depth overlap depend on Android version, OEM restrictions and wallpaper segmentation support."
+    - "Some TECNO system panels and lock-screen functions remain controlled by HiOS."
+    - "Free-position widgets may need a custom Compose canvas; Android home-screen widgets normally use a grid."
+    - "Use supported public Android APIs; do not promise unsupported system-level effects."
+  milestones:
+    - id: "M1"
+      name: "Базовый лаунчер"
+      tasks: ["ROLE_HOME", "рабочий стол", "список приложений", "папки", "док"]
+    - id: "M2"
+      name: "Темы и обои"
+      tasks: ["галерея тем", "выбор обоев", "иконки", "сохранение настроек"]
+    - id: "M3"
+      name: "Виджеты"
+      tasks: ["AppWidgetHost", "перетаскивание", "изменение размера", "редактор"]
+    - id: "M4"
+      name: "Экран блокировки"
+      tasks: ["редактор часов", "стеклянный эффект", "обои", "системная безопасность"]
+    - id: "M5"
+      name: "Полировка"
+      tasks: ["анимации", "доступность", "оптимизация", "тестирование на TECNO"]
+
+github:
+  suggested_repository_name: "aether-launcher"
+  suggested_structure:
+    - "app/"
+    - "app/src/main/"
+    - "app/src/main/java/com/aether/launcher/"
+    - "app/src/main/res/"
+    - "config/spark40proplus-launcher.yml"
+    - "README.md"
+    - "LICENSE"
+  suggested_readme_note: "This YAML describes the product configuration. The Android app implementation is required to make these features work."
