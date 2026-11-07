@@ -1,4 +1,4 @@
-name: Build Aether Launcher APK
+name: Build Android Apk
 
 on:
   workflow_dispatch:
