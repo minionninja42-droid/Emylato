@@ -22,15 +22,28 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK command-line tools
-        uses: android-actions/setup-android@v3
+      - 
+      - name: Install Android SDK
+        shell: bash
+        run: |
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "Using SDK: $SDK_ROOT"
 
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses >/dev/null || true
+          SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" \
+            -type f -name sdkmanager | head -n 1)
 
-      # Install only the SDK components needed for compilation.
-      # Do not pass a multiline packages input to setup-android.
-      - name: Install Android SDK platform and build tools
+          if [ -z "$SDKMANAGER" ]; then
+            echo "sdkmanager not found"
+            exit 1
+          fi
+
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses || true
+
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
 
