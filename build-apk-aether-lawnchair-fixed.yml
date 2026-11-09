@@ -1,0 +1,339 @@
+name: Aether Launcher - Lawnchair Legacy Style
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-apk.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Create Android project
+        shell: bash
+        run: |
+          mkdir -p app/src/main/java/com/aether/launcher
+          cat > settings.gradle.kts <<'EOF'
+          pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories { google(); mavenCentral() }
+          }
+          rootProject.name = "AetherLauncher"
+          include(":app")
+          EOF
+          cat > build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.7.3" apply false
+              id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+              id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
+          }
+          EOF
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          kotlin.code.style=official
+          EOF
+          cat > app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+              id("org.jetbrains.kotlin.plugin.compose")
+          }
+          android {
+              namespace = "com.aether.launcher"
+              compileSdk = 35
+              defaultConfig {
+                  applicationId = "com.aether.launcher"
+                  minSdk = 26
+                  targetSdk = 35
+                  versionCode = 1
+                  versionName = "4.0"
+              }
+              buildFeatures { compose = true }
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          dependencies {
+              val composeBom = platform("androidx.compose:compose-bom:2024.10.01")
+              implementation(composeBom)
+              androidTestImplementation(composeBom)
+              implementation("androidx.activity:activity-compose:1.9.3")
+              implementation("androidx.compose.ui:ui")
+              implementation("androidx.compose.ui:ui-tooling-preview")
+              implementation("androidx.compose.material3:material3")
+              implementation("androidx.compose.material:material-icons-extended")
+              implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+              debugImplementation("androidx.compose.ui:ui-tooling")
+          }
+          EOF
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>
+              <application android:theme="@android:style/Theme.Material.NoActionBar" android:label="Aether Launcher" android:allowBackup="true">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          cat > app/src/main/java/com/aether/launcher/MainActivity.kt <<'EOF'
+          package com.aether.launcher
+
+          import android.content.Intent
+          import android.content.pm.PackageManager
+          import android.os.Bundle
+          import androidx.activity.ComponentActivity
+          import androidx.activity.compose.setContent
+          import androidx.compose.animation.AnimatedContent
+          import androidx.compose.animation.fadeIn
+          import androidx.compose.animation.fadeOut
+          import androidx.compose.animation.togetherWith
+          import androidx.compose.foundation.background
+          import androidx.compose.foundation.clickable
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.grid.GridCells
+          import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+          import androidx.compose.foundation.lazy.grid.items
+          import androidx.compose.foundation.shape.CircleShape
+          import androidx.compose.foundation.shape.RoundedCornerShape
+          import androidx.compose.material.icons.Icons
+          import androidx.compose.material.icons.filled.*
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.draw.clip
+          import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.platform.LocalContext
+          import androidx.compose.ui.text.font.FontWeight
+          import androidx.compose.ui.text.style.TextOverflow
+          import androidx.compose.ui.unit.dp
+          import androidx.compose.ui.unit.sp
+
+          private val bg = Color(0xFF17191A)
+          private val panel = Color(0xFF222526)
+          private val accent = Color(0xFF80CBC4)
+          private val muted = Color(0xFF9AA3A3)
+
+          class MainActivity : ComponentActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContent { AetherApp() }
+              }
+          }
+
+          data class LaunchApp(val label: String, val packageName: String, val icon: android.graphics.drawable.Drawable)
+
+          @Composable
+          fun AetherApp() {
+              var page by remember { mutableIntStateOf(0) }
+              var settings by remember { mutableStateOf(false) }
+              var drawer by remember { mutableStateOf(false) }
+              var query by remember { mutableStateOf("") }
+              val context = LocalContext.current
+              val apps = remember {
+                  val pm = context.packageManager
+                  val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                  pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
+                      .mapNotNull { info ->
+                          val name = info.loadLabel(pm).toString()
+                          val pkg = info.activityInfo.packageName
+                          if (pkg == context.packageName) null else LaunchApp(name, pkg, info.loadIcon(pm))
+                      }.distinctBy { it.packageName }.sortedBy { it.label.lowercase() }
+              }
+              MaterialTheme(colorScheme = darkColorScheme(
+                  background = bg, surface = panel, primary = accent,
+                  onBackground = Color.White, onSurface = Color.White
+              )) {
+                  Surface(Modifier.fillMaxSize(), color = bg) {
+                      when {
+                          settings -> SettingsScreen(onBack = { settings = false })
+                          drawer -> AppDrawer(apps.filter { it.label.contains(query, true) }, query,
+                              onQuery = { query = it }, onBack = { drawer = false }, onOpen = { launch(context, it.packageName) })
+                          else -> HomeScreen(
+                              page = page, onPage = { page = it.coerceIn(0, 2) },
+                              onSettings = { settings = true }, onDrawer = { drawer = true },
+                              apps = apps.take(12), onOpen = { launch(context, it.packageName) }
+                          )
+                      }
+                  }
+              }
+          }
+
+          private fun launch(context: android.content.Context, pkg: String) {
+              runCatching { context.startActivity(context.packageManager.getLaunchIntentForPackage(pkg)) }
+          }
+
+          @Composable
+          fun HomeScreen(page: Int, onPage: (Int) -> Unit, onSettings: () -> Unit,
+                         onDrawer: () -> Unit, apps: List<LaunchApp>, onOpen: (LaunchApp) -> Unit) {
+              Column(Modifier.fillMaxSize().padding(horizontal = 22.dp, vertical = 18.dp)) {
+                  Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                      Text("AETHER", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 3.sp)
+                      IconButton(onClick = onSettings) { Icon(Icons.Default.Settings, null, tint = muted) }
+                  }
+                  Spacer(Modifier.height(38.dp))
+                  AnimatedContent(targetState = page, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "pages") { current ->
+                      when (current) {
+                          0 -> Column {
+                              Text("The desktop", fontSize = 38.sp, fontWeight = FontWeight.Light, color = Color.White)
+                              Text("that feels like home.", fontSize = 38.sp, fontWeight = FontWeight.Light, color = Color.White)
+                              Spacer(Modifier.height(30.dp))
+                              Text("ПРИЛОЖЕНИЯ", color = muted, fontSize = 11.sp, letterSpacing = 2.sp)
+                              Spacer(Modifier.height(16.dp))
+                              LazyVerticalGrid(columns = GridCells.Fixed(4), verticalArrangement = Arrangement.spacedBy(22.dp),
+                                  horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
+                                  items(apps) { app ->
+                                      Column(horizontalAlignment = Alignment.CenterHorizontally,
+                                          modifier = Modifier.clickable { onOpen(app) }.padding(4.dp)) {
+                                          androidx.compose.foundation.Image(
+                                              bitmap = remember(app.packageName) {
+                                                  val drawable = app.icon
+                                                  val bmp = android.graphics.Bitmap.createBitmap(96, 96, android.graphics.Bitmap.Config.ARGB_8888)
+                                                  val canvas = android.graphics.Canvas(bmp)
+                                                  drawable.setBounds(0, 0, 96, 96); drawable.draw(canvas)
+                                                  androidx.compose.ui.graphics.asImageBitmap(bmp)
+                                              }, contentDescription = app.label, modifier = Modifier.size(48.dp)
+                                          )
+                                          Spacer(Modifier.height(6.dp))
+                                          Text(app.label, color = Color.White, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                      }
+                                  }
+                              }
+                          }
+                          1 -> Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                              Text("Эта страница пока пустая", color = muted, fontSize = 16.sp)
+                          }
+                          else -> Column(Modifier.weight(1f)) {
+                              Text("Виджеты", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Light)
+                              Spacer(Modifier.height(18.dp))
+                              listOf("Часы и дата", "Погода", "Календарь", "Батарея", "Музыка").forEach {
+                                  Surface(color = panel, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                                      Text(it, color = Color.White, modifier = Modifier.padding(18.dp))
+                                  }
+                              }
+                          }
+                      }
+                  }
+                  Row(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                      repeat(3) { index ->
+                          Box(Modifier.padding(horizontal = 5.dp).size(if (index == page) 18.dp else 6.dp, 6.dp)
+                              .clip(CircleShape).background(if (index == page) accent else Color.DarkGray)
+                              .clickable { onPage(index) })
+                      }
+                  }
+                  Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(panel).padding(12.dp),
+                      horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                      IconButton(onClick = onDrawer) { Icon(Icons.Default.Search, "Поиск приложений", tint = Color.White) }
+                      IconButton(onClick = { onPage(0) }) { Icon(Icons.Default.Home, "Домой", tint = accent) }
+                      IconButton(onClick = onSettings) { Icon(Icons.Default.Tune, "Настройки", tint = Color.White) }
+                  }
+              }
+          }
+
+          @Composable
+          fun AppDrawer(apps: List<LaunchApp>, query: String, onQuery: (String) -> Unit,
+                        onBack: () -> Unit, onOpen: (LaunchApp) -> Unit) {
+              Column(Modifier.fillMaxSize().padding(20.dp)) {
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                      IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null, tint = Color.White) }
+                      Text("Приложения", color = Color.White, fontSize = 24.sp)
+                  }
+                  OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(),
+                      placeholder = { Text("Поиск") }, singleLine = true)
+                  Spacer(Modifier.height(12.dp))
+                  LazyVerticalGrid(columns = GridCells.Fixed(4), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                      items(apps) { app ->
+                          Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onOpen(app) }) {
+                              androidx.compose.foundation.Image(
+                                  bitmap = remember(app.packageName) {
+                                      val bmp = android.graphics.Bitmap.createBitmap(96, 96, android.graphics.Bitmap.Config.ARGB_8888)
+                                      val c = android.graphics.Canvas(bmp); app.icon.setBounds(0, 0, 96, 96); app.icon.draw(c)
+                                      androidx.compose.ui.graphics.asImageBitmap(bmp)
+                                  }, contentDescription = app.label, modifier = Modifier.size(42.dp))
+                              Text(app.label, color = Color.White, fontSize = 10.sp, maxLines = 1)
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun SettingsScreen(onBack: () -> Unit) {
+              val sections = listOf(
+                  Triple("Theme", "Icons, colors, blur", Icons.Default.Palette),
+                  Triple("Desktop", "Layout, pages, transitions", Icons.Default.Home),
+                  Triple("At a Glance", "Date, time, data sources", Icons.Default.Schedule),
+                  Triple("Dock", "Layout, style, indicators", Icons.Default.ViewCarousel),
+                  Triple("Drawer", "Layout, categories, suggestions", Icons.Default.Apps),
+                  Triple("Search", "Layout, style, search engine", Icons.Default.Search),
+                  Triple("Plugins", "KWGT, KLWP and integrations", Icons.Default.Extension),
+                  Triple("Gestures", "Double tap, swipe actions", Icons.Default.TouchApp),
+                  Triple("Back Up & Restore", "Save and restore home setup", Icons.Default.Restore),
+                  Triple("About", "Aether Launcher 4.0", Icons.Default.Info)
+              )
+              Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                  Row(verticalAlignment = Alignment.CenterVertically) {
+                      IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null, tint = Color.White) }
+                      Text("Настройки", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Light)
+                  }
+                  OutlinedTextField(value = "", onValueChange = {}, modifier = Modifier.fillMaxWidth(),
+                      placeholder = { Text("Поиск настроек") }, enabled = false, singleLine = true)
+                  Spacer(Modifier.height(10.dp))
+                  androidx.compose.foundation.lazy.LazyColumn {
+                      items(sections.size) { i ->
+                          val item = sections[i]
+                          Row(Modifier.fillMaxWidth().clickable { }.padding(vertical = 13.dp),
+                              verticalAlignment = Alignment.CenterVertically) {
+                              Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xFF303638)), contentAlignment = Alignment.Center) {
+                                  Icon(item.third, null, tint = listOf(accent, Color(0xFF8CAEFF), Color(0xFFE78CA8), Color(0xFF79D9B2))[i % 4])
+                              }
+                              Spacer(Modifier.width(14.dp))
+                              Column(Modifier.weight(1f)) {
+                                  Text(item.first, color = Color.White, fontSize = 15.sp)
+                                  Text(item.second, color = muted, fontSize = 11.sp)
+                              }
+                              Icon(Icons.Default.ChevronRight, null, tint = muted)
+                          }
+                      }
+                  }
+              }
+          }
+          EOF
+
+      - name: Build debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aether-Launcher-Lawnchair-Style
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
